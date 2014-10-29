@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014 Jozsef Galajda <jgalajda@pannongsm.hu>
+ * All rights reserved.
+ */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <pthread.h>

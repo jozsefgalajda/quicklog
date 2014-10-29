@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014 Jozsef Galajda <jgalajda@pannongsm.hu>
+ * All rights reserved.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>

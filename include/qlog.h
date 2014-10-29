@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014 Jozsef Galajda <jgalajda@pannongsm.hu>
+ * All rights reserved.
+ */
+
 /**
  * \file qlog.h
  * \brief Public data structures and funtion definitions.

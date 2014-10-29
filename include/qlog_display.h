@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014 Jozsef Galajda <jgalajda@pannongsm.hu>
+ * All rights reserved.
+ */
+
 #ifndef __QLOG_DISPLAY_H
 #define __QLOG_DISPLAY_H
 
