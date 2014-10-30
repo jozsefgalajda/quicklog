@@ -194,7 +194,7 @@ qlog_buffer_id_t qlog_create_buffer(size_t size){
     int buffer_index = -1;
     int i = 0;
     int lock_res = QLOG_RET_ERR;
-        
+
     if (qlog_lib_inited){
         lock_res = qlog_lock_global(0);
         if (lock_res != QLOG_RET_OK){
@@ -222,7 +222,7 @@ qlog_buffer_id_t qlog_create_buffer(size_t size){
 
         lock_res = qlog_unlock_global();
         if ( buffer_index >= 0 && qlog_buffers[buffer_index] != NULL && lock_res == QLOG_RET_OK){
-               return buffer_index;
+            return buffer_index;
         }
     }
     return -1;
@@ -463,6 +463,25 @@ void qlog_reset_event_internal(qlog_event_t* event){
 }
 
 /**
+ * \brief Internal event cleanup function
+ *
+ * \param event The event to be cleaned up
+ *
+ * Generic event cleanup routine. 
+ * Free the extended data if allocated for the event.
+ */
+void qlog_cleanup_event_internal(qlog_event_t* event){
+    if (event){
+        if (event->ext_data){
+            free(event->ext_data);
+            event->ext_data = NULL;
+        }
+        free(event);
+    }
+}
+
+
+/**
  * \brief Internal library cleanup function
  *
  * \param buffer The qlog buffer to be released
@@ -486,13 +505,13 @@ void qlog_cleanup_buffer_internal(qlog_buffer_t* buffer){
                 if (start == 1){    /* check if we have reached back to the head again or just starting to delete*/
                     start = 0;
                     event = event->next;
-                    free(tmp);
+                    qlog_cleanup_event_internal(tmp);
                 } else {
                     event = NULL;
                 }
             } else {
                 event = event->next;
-                free(tmp);
+                qlog_cleanup_event_internal(tmp);
             }
         }
         free(buffer);
@@ -527,7 +546,6 @@ int qlog_log_internal(
 {
     qlog_event_t* event = NULL;
     int res = 0;
-    int wrapped = 0;
 
     /* grab the buffer lock
      * get the next free slot and release the lock as soon as possible 
@@ -539,7 +557,6 @@ int qlog_log_internal(
         log_buffer -> next_write = event->next;
         if (log_buffer->next_write == log_buffer->head){
             log_buffer->wrapped++;
-            wrapped = log_buffer->wrapped;
         }
         res = qlog_unlock_buffer_internal(log_buffer);
         if (res) {
@@ -575,21 +592,16 @@ int qlog_log_internal(
 
     gettimeofday(&(event->timestamp), NULL);
 
+    event->thread_name[0] = '\0';
+    event->function_name[0] = '\0';
+    event->message[0] = '\0';
     /* store thread name if it is provided */
     if (thread){
-        /* clean up in case we are reusing an old event slot */
-        if (wrapped){
-            memset(event->thread_name, 0, QLOG_TNAME_BUF_SIZE);
-        }
         strncpy(event->thread_name, thread, QLOG_TNAME_BUF_SIZE - 1);
     }
 
     /* store the function name if it is provided */
     if (function){
-        /* clean up in case we are reusing an old event slot */
-        if (wrapped){
-            memset(event->function_name, 0, QLOG_FNAME_BUF_SIZE);
-        }
         strncpy(event->function_name, function, QLOG_FNAME_BUF_SIZE - 1);
     }
 
@@ -598,20 +610,14 @@ int qlog_log_internal(
 
     /* store the log message */
     if (message) {
-        /* clean up in case we are reusing an old event slot */
-        if (wrapped){
-            memset(event->message, 0, QLOG_MSG_BUF_SIZE);
-        }
         strncpy(event->message, message, QLOG_MSG_BUF_SIZE - 1);
     }
 
     /* clean up external event data */
-    if (wrapped) {
-        if (event->ext_data != NULL){
-            free(event->ext_data);
-            event->ext_data = NULL;
-            event->ext_data_size = 0;
-        }
+    if (event->ext_data != NULL){
+        free(event->ext_data);
+        event->ext_data = NULL;
+        event->ext_data_size = 0;
         event->ext_event_type = QLOG_EXT_EVENT_NONE;
     }
 
@@ -712,7 +718,7 @@ int qlog_lock_global(int full_lock){
         if (pt_res){
             return QLOG_RET_ERR;
         }
-	qlog_global_lock_state = QLOG_LOCK_SIMPLE;
+        qlog_global_lock_state = QLOG_LOCK_SIMPLE;
 
         if (full_lock) {
             /* disable the logging globally */
@@ -720,13 +726,13 @@ int qlog_lock_global(int full_lock){
 
             /* lock all the buffers individially */
             for (i = 0; i < QLOG_MAX_BUF_NUM; i++) {
-	        if (qlog_buffers[i]) {
-	            qlog_lock_buffer_internal(qlog_buffers[i]);
-		    if (res != QLOG_RET_OK) {
-		        return res;
-		    }
-	        }
-	    }
+                if (qlog_buffers[i]) {
+                    qlog_lock_buffer_internal(qlog_buffers[i]);
+                    if (res != QLOG_RET_OK) {
+                        return res;
+                    }
+                }
+            }
             qlog_global_lock_state = QLOG_LOCK_FULL;
         }
         return QLOG_RET_OK;
@@ -765,7 +771,7 @@ int qlog_unlock_global(void){
         if (pt_res) {
             return QLOG_RET_ERR;
         }
-        
+
         if (qlog_global_lock_state == QLOG_LOCK_FULL){
             qlog_enable_internal();
         }
@@ -775,7 +781,7 @@ int qlog_unlock_global(void){
     }
     return QLOG_RET_ERR;
 }
-	
+
 /**
  * \brief Provides the buffer pointer by buffer id
  *

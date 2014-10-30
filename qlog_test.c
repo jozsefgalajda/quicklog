@@ -124,7 +124,7 @@ void test5(){
     QLOG_LEAVE;
     qlog_display_print_buffer(stdout);
     /*qlog_start_server();
-    qlog_wait_for_server();*/
+      qlog_wait_for_server();*/
 }
 
 void* thread_routine2(void* thread_arg){
@@ -156,7 +156,41 @@ void test6(void){
 }
 
 
+void test7(int type){
+    int i = 0, j = 0;
+    char* buffer;
+    qlog_init(50);
+    qlog_thread_init("test_6_main_thread");
+    for (i = 0; i < 10; i++){
+        for (j = 0; j< 1500; j++){
+            switch (type){
+                case 1:
+                    QLOG("log entry");
+                    break;
+                case 2:
+                    QLOG_HEX(&buffer, 15);
+                    break;
+                case 3:
+                    QLOG_BT;
+                    break;
+                case 4:
+                    QLOG("log entry sdlkfjsdklfjsdlkfjsdklfj");
+                    QLOG_HEX(&buffer, 98);
+                    QLOG_BT;
+                default:
+                    break;
+            }
+        }
+        /*qlog_display_print_buffer(stdout);*/
+        qlog_reset();
+    }
+    qlog_cleanup();
+}
+
 int main(){
-    test6();
+    test7(1);
+    test7(2);
+    test7(3);
+    test7(4);
     return 0;
 }
