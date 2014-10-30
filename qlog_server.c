@@ -194,7 +194,7 @@ void qlog_server_handle_connection(int socket){
     }
 }
 
-void *qlog_server_handler(void* data){
+void *qlog_server_handler(void* data UNUSED){
     int server_sock = 0;
     int conn_sock = 0;
     struct sockaddr_in server_addr;

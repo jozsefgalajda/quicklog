@@ -11,6 +11,7 @@
 #define __QLOG_INTERNAL_H
 
 #include "qlog_ext.h"
+#define UNUSED __attribute__ ((unused))
 
 #define QLOG_MAX_EVENT_NUM  128
 #define QLOG_MAX_BUF_NUM    5

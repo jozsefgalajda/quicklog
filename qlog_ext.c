@@ -18,7 +18,7 @@ extern __thread char qlog_thread_name[16];
 
 
 void qlog_ext_display_hex_dump(FILE* stream, void* datap, size_t size){
-    int i = 0, j = 0; 
+    unsigned int i = 0, j = 0;
     char temp[8] = {0};
     char buffer[128] = {0};
     char *ascii;
@@ -62,7 +62,7 @@ void qlog_ext_display_hex_dump(FILE* stream, void* datap, size_t size){
 }
 
 
-void qlog_ext_display_generic(FILE* stream, void* data, size_t size){
+void qlog_ext_display_generic(FILE* stream, void* data, size_t size UNUSED){
     fprintf(stream, "\tBacktrace:\n%s\n", (char*)data);
 }
 
@@ -116,7 +116,7 @@ int qlog_ext_log(qlog_ext_event_type_t event_type, void* ext_data, size_t data_s
     return res;
 }
 
-int qlog_ext_log_id(qlog_buffer_id_t buffer_id, qlog_ext_event_type_t event_type, void* ext_data, size_t data_size){
+int qlog_ext_log_id(qlog_buffer_id_t buffer_id UNUSED, qlog_ext_event_type_t event_type UNUSED, void* ext_data UNUSED, size_t data_size UNUSED){
     return QLOG_RET_ERR;
 }
 
@@ -145,14 +145,13 @@ int qlog_ext_log_long(qlog_ext_event_type_t event_type,
     return res;
 }
 
-
-int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id, 
-        qlog_ext_event_type_t event_id,
-        void* ext_data,
-        size_t data_size,
-        char* thread_name,
-        char* function_name,
-        int line_number)
+int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id UNUSED,
+        qlog_ext_event_type_t event_id UNUSED,
+        void* ext_data UNUSED,
+        size_t data_size UNUSED,
+        char* thread_name UNUSED,
+        char* function_name UNUSED,
+        int line_number UNUSED)
 {
     return QLOG_RET_ERR;
 }
