@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <stdint.h>
 
 #include "qlog.h"
 #include "qlog_internal.h"
@@ -134,7 +135,7 @@ int qlog_reset(void){
 int qlog_reset_buffer_id(qlog_buffer_id_t buffer_id){
     int res = QLOG_RET_ERR;
     if (qlog_lib_inited){
-        if (buffer_id >= 0 && buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
+        if (buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
             res = qlog_reset_buffer_internal(qlog_buffers[buffer_id]);
         }
     }
@@ -264,7 +265,7 @@ int qlog_log(const char* message){
 int qlog_log_id(qlog_buffer_id_t buffer_id, const char* message){
     int res = QLOG_RET_ERR;
     if (qlog_lib_inited && qlog_enabled && message){
-        if (buffer_id >= 0 && buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
+        if (buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
             res = qlog_log_internal(qlog_buffers[buffer_id], NULL, NULL, 0, message, NULL, 0, QLOG_EXT_EVENT_NONE);
         }
     }
@@ -327,7 +328,7 @@ int qlog_log_long_id(
 {    
     int res = QLOG_RET_ERR;
     if (qlog_lib_inited && qlog_enabled && message){
-        if (buffer_id >= 0 && buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
+        if (buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
             res = qlog_log_internal(qlog_buffers[buffer_id], thread, function, line_num, message, NULL, 0, QLOG_EXT_EVENT_NONE);
         }
     }
@@ -790,7 +791,7 @@ int qlog_unlock_global(void){
  * Returns with the buffer pointer by the specified id value
  */
 qlog_buffer_t* qlog_internal_get_buffer_by_id(qlog_buffer_id_t buffer_id){
-    if (qlog_lib_inited && buffer_id >= 0 && buffer_id < QLOG_MAX_BUF_NUM){
+    if (qlog_lib_inited && buffer_id < QLOG_MAX_BUF_NUM){
         return qlog_buffers[buffer_id];
     }
     return NULL;

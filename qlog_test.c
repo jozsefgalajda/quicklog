@@ -28,6 +28,7 @@
 int start = 0;
 int threads_started = 0;
 pthread_t *threads;
+int test8_run  = 0;
 
 void test2(){
     qlog_init(15);
@@ -127,34 +128,6 @@ void test5(){
       qlog_wait_for_server();*/
 }
 
-void* thread_routine2(void* thread_arg){
-    int i = 0;
-    const char* thr_name = (const char*) thread_arg;
-
-    printf("thread %s has been started\n", thr_name);
-    qlog_thread_init(thr_name);
-    while(1){
-        QLOG("this is a simple log message");
-        QLOG_BT;
-        QLOG_HEX(&i, 85);
-    }
-    return NULL;
-}
-
-
-void test6(void){
-    pthread_t thr1, thr2;
-    char* thr1_name = "Thread alma";
-    char* thr2_name = "Thread papaya";
-
-    qlog_init(50);
-    pthread_create(&thr1, NULL, thread_routine2, (void*)thr1_name);
-    pthread_create(&thr2, NULL, thread_routine2, (void*)thr2_name);
-    qlog_start_server();
-    qlog_wait_for_server();
-
-}
-
 
 void test7(int type){
     int i = 0, j = 0;
@@ -187,10 +160,60 @@ void test7(int type){
     qlog_cleanup();
 }
 
+void* test8_thr(void* data){
+    char* thread_name = (char*) data;
+    struct timespec sleep_time;
+    struct timespec remaining_time;
+    unsigned long counter = 0;
+    sleep_time.tv_sec = 0;
+    sleep_time.tv_nsec = 1000000;
+
+    qlog_thread_init(thread_name);
+    printf("Thread started: %s\n", thread_name);
+    while(1){
+        if (test8_run == 0) {
+            printf("Loop count in thread %s: %lu\n", thread_name, counter);
+            break;
+        }
+        counter++;
+        QLOG("thread message");
+        QLOG_HEX(thread_name, 10);
+        QLOG_BT;
+        nanosleep(&sleep_time, &remaining_time);
+    }
+    return NULL;
+}
+
+
+void test8(int duration, int reset){
+    pthread_t thr1, thr2;
+    char* thr1_name = "Thread1";
+    char* thr2_name = "Thread2";
+    int i = 0;
+
+    qlog_init(13);
+    test8_run = 1;
+    pthread_create(&thr1, NULL, test8_thr, (void*)thr1_name);
+    pthread_create(&thr2, NULL, test8_thr, (void*)thr2_name);
+    for (i = 0; i< duration; i++){
+        printf("%d ", i);
+        if (reset){
+            qlog_reset();
+            printf(" r ");
+        }
+        fflush(stdout);
+        sleep(1);
+    }
+    test8_run = 0;
+    pthread_join(thr1, NULL);
+    pthread_join(thr2, NULL);
+    qlog_display_print_buffer(stdout);
+    qlog_cleanup();
+}
+
+
 int main(){
-    test7(1);
-    test7(2);
-    test7(3);
-    test7(4);
+    test8(10, 0);
+    test8(60, 1);
     return 0;
 }
