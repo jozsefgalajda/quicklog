@@ -335,6 +335,19 @@ int qlog_log_long_id(
     return res;
 }
 
+void qlog_toggle_status(void){
+    if (qlog_enabled == 1){
+        qlog_disable_internal();
+    } else {
+        qlog_enable_internal();
+    }
+}
+
+int qlog_get_status(void){
+    return qlog_enabled;
+}
+
+
 /******************************************************************************
  *
  * P R I V A T E  functions

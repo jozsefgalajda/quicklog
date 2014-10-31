@@ -45,7 +45,8 @@ static qlog_server_menu_item qlog_server_menu[] = {
     {"[4] Print logs from all buffers",NULL}, 
     {"[5] Reset (clear) the active buffer",NULL}, 
     {"[6] Reset (clear) all buffers",NULL}, 
-    {"[7] Close connection\n", NULL}
+    {"[7] Enable/disable logging", NULL}, 
+    {"[q] Close connection", NULL}
 };
 
 /******************************************************************************
@@ -182,6 +183,11 @@ void qlog_server_handle_connection(int socket){
                 qlog_server_print_cmd_footer(stream);
                 break;
             case '7':
+                qlog_server_print_cmd_header(stream, "Enable/Disable logging");
+                qlog_toggle_status();
+                fprintf(stream, "Current logging state: %s\n", qlog_get_status() ? "Enabled" : "Disabled");
+                qlog_server_print_cmd_footer(stream);
+                break;
             case 'q':
                 loop = 0;
                 break;
