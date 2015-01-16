@@ -445,6 +445,7 @@ int qlog_reset_buffer_internal(qlog_buffer_t* log_buffer) {
         }
         log_buffer->wrapped = 0;
         log_buffer->event_locked = 0;
+        log_buffer->next_write = log_buffer->head;
         res = qlog_unlock_buffer_internal(log_buffer);
     }
     return res;
@@ -872,28 +873,62 @@ void qlog_dbg_print_buffer(FILE* stream, qlog_buffer_t* buffer){
 }
 
 
+void qlog_dbg_print_lib_status(FILE* stream){
+    if (stream == NULL){
+        return;
+    }
+    fprintf(stream, "--------------------------------------------------\n");
+    fprintf(stream, "                   Library status\n");
+    fprintf(stream, "--------------------------------------------------\n");
+    fprintf(stream, "qlog_lib_inited  : %d\n", qlog_lib_inited);
+    fprintf(stream, "qlog_global_lock : 0x%08x\n", qlog_global_lock);
+    fprintf(stream, "qlog_enabled     : %d\n", qlog_enabled);
+}
+
+void qlog_dbg_print_buffer_status(FILE* stream, const qlog_buffer_t* buffer){
+    if (stream == NULL || buffer == NULL){
+        return;
+    }
+    fprintf(stream, "--------------------------------------------------\n");
+    fprintf(stream, "                   Buffer status\n");
+    fprintf(stream, "--------------------------------------------------\n");
+    fprintf(stream, "Buffer head         : %p\n", (void*) buffer->head);
+    fprintf(stream, "Buffer next         : %p\n", (void*) buffer->next_write);
+    fprintf(stream, "Buffer size         : %u\n", (unsigned int) buffer->buffer_size);
+    fprintf(stream, "Buffer wrapped      : %d\n", buffer->wrapped);
+    fprintf(stream, "Buffer event locked : %d\n", buffer->event_locked);
+    fprintf(stream, "Buffer lock:        : 0x%08x\n", buffer->lock);
+}
+
 void qlog_dbg_print_buffers(FILE* stream){
     int i = 0;
     int start = 1;
     qlog_event_t* event = NULL;
+
+    if (stream == NULL){
+        return;
+    }
+
+    qlog_dbg_print_lib_status(stream);
     if (qlog_lib_inited){
-        pthread_spin_lock(&qlog_global_lock);
+        qlog_lock_global(0);
+        fprintf(stream, "\n(*) Grab global lock...\n\n");
+        qlog_dbg_print_lib_status(stream);
+        fprintf(stream, "\n");
         fprintf(stream, "==================================================\n");
-        fprintf(stream, " QLOG buffers\n");
+        fprintf(stream, "                  QLOG buffers\n");
         fprintf(stream, "==================================================\n");
         for (i = 0; i < QLOG_MAX_BUF_NUM; i++){
-            fprintf(stream, " Buffer index: %d\n", i);
+            fprintf(stream, "Buffer index: %d\n", i);
             if (qlog_buffers[i] == NULL){
-                fprintf(stream, "     This buffer is not initialized.\n");
+                fprintf(stream, "This buffer is not initialized.\n");
             } else {
+                qlog_dbg_print_buffer_status(stream, qlog_buffers[i]);
+                fprintf(stream, "\n(*) Grab buffer lock...\n\n");
                 qlog_lock_buffer_internal(qlog_buffers[i]);
-                fprintf(stream, "     Buffer head         : %p\n", (void*) qlog_buffers[i]->head);
-                fprintf(stream, "     Buffer next         : %p\n", (void*) qlog_buffers[i]->next_write);
-                fprintf(stream, "     Buffer size         : %u\n", (unsigned int) qlog_buffers[i]->buffer_size);
-                fprintf(stream, "     Buffer wrapped      : %d\n", qlog_buffers[i]->wrapped);
-                fprintf(stream, "     Buffer event locked : %d\n", qlog_buffers[i]->event_locked);
+                qlog_dbg_print_buffer_status(stream, qlog_buffers[i]);
                 fprintf(stream, "--------------------------------------------------\n");
-                fprintf(stream, " Contents of this buffer\n");
+                fprintf(stream, "Contents of this buffer\n");
                 fprintf(stream, "--------------------------------------------------\n");
                 event = qlog_buffers[i]->head;
                 start = 1;
@@ -915,7 +950,7 @@ void qlog_dbg_print_buffers(FILE* stream){
             }
             fprintf(stream, "--------------------------------------------------\n");
         }
-        pthread_spin_unlock(&qlog_global_lock);
+        qlog_unlock_global();
     } else {
         fprintf(stream, "The qlog library has not been initialized\n");
     }

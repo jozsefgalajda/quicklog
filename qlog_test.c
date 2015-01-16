@@ -113,8 +113,16 @@ int setup(){
 }
 
 void test5(){
+    printf("================================================================================\n");
+    printf(" Test #5\n");
+    printf("================================================================================\n");
+    printf("(*) Initialize library with size of 10\n\n");
     qlog_init(10);
     qlog_thread_init("main thread");
+
+    qlog_dbg_print_buffers(stdout);
+
+    printf("(*) Adding log messages (8)\n\n");
     QLOG_ENTRY;
     QLOG("Test log: alma1");
     QLOG_HEX(&start, 87);
@@ -123,9 +131,42 @@ void test5(){
     QLOG_BT;
     QLOG("Test log: alma4");
     QLOG_LEAVE;
-    qlog_display_print_buffer(stdout);
-    /*qlog_start_server();
-      qlog_wait_for_server();*/
+    printf("================================================================================\n");
+    printf("================================================================================\n");
+    qlog_dbg_print_buffers(stdout);
+    qlog_reset();
+    QLOG("Test log2: alma1");
+    QLOG("Test log2: alma2");
+    QLOG("Test log2: alma3");
+    QLOG("Test log2: alma4");
+    QLOG("Test log2: alma5");
+    QLOG("Test log2: alma6");
+    QLOG_BT;
+    QLOG_HEX(&start, 100);
+    QLOG("Test log2: alma7");
+    QLOG("Test log2: alma8");
+    QLOG("Test log2: alma9");
+    QLOG("Test log2: alma10");
+    printf("================================================================================\n");
+    printf("================================================================================\n");
+    qlog_dbg_print_buffers(stdout);
+    qlog_reset();
+    QLOG("Test log2: alma1");
+    QLOG("Test log2: alma2");
+    QLOG("Test log2: alma3");
+    QLOG("Test log2: alma4");
+    QLOG("Test log2: alma5");
+    QLOG("Test log2: alma6");
+    QLOG_BT;
+    QLOG_HEX(&start, 100);
+    QLOG("Test log2: alma7");
+    QLOG("Test log2: alma8");
+    QLOG("Test log2: alma9");
+    QLOG("Test log2: alma10");
+    printf("================================================================================\n");
+    printf("================================================================================\n");
+    qlog_dbg_print_buffers(stdout);
+    qlog_cleanup();
 }
 
 
@@ -213,7 +254,6 @@ void test8(int duration, int reset){
 
 
 int main(){
-    test8(10, 0);
-    test8(60, 1);
+    test5(10, 0);
     return 0;
 }
