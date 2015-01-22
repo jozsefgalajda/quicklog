@@ -78,7 +78,12 @@ int qlog_unlock_global(void);
 void qlog_enable_internal(void);
 void qlog_disable_internal(void);
 
-qlog_buffer_t* qlog_internal_get_buffer_by_id(qlog_buffer_id_t buffer_id);
 int qlog_internal_get_max_buf_num(void);
+int qlog_internal_is_lib_inited(void);
+int qlog_internal_is_logging_enabled(void);
+qlog_buffer_t* qlog_internal_get_default_buf(void);
+qlog_buffer_id_t qlog_internal_get_default_buf_id(void);
+qlog_buffer_t* qlog_internal_get_buffer_by_id(qlog_buffer_id_t buffer_id);
+char* qlog_internal_get_thread_name(void);
 
 #endif

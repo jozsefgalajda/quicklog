@@ -166,6 +166,8 @@ void test5(){
     printf("================================================================================\n");
     printf("================================================================================\n");
     qlog_dbg_print_buffers(stdout);
+    qlog_start_server();
+    qlog_wait_for_server();
     qlog_cleanup();
 }
 
@@ -225,6 +227,13 @@ void* test8_thr(void* data){
     return NULL;
 }
 
+void test6(){
+    qlog_init(10);
+    qlog_thread_init("main thread");
+    QLOG_BT;
+    qlog_display_print_buffer(stdout);
+    qlog_cleanup();
+}
 
 void test8(int duration, int reset){
     pthread_t thr1, thr2;
@@ -254,6 +263,6 @@ void test8(int duration, int reset){
 
 
 int main(){
-    test5(10, 0);
+    test6();
     return 0;
 }

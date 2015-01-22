@@ -11,12 +11,6 @@
 #include "qlog_internal.h"
 
 
-extern int qlog_lib_inited;
-extern qlog_buffer_t* qlog_default_buf;
-extern int qlog_enabled;
-extern __thread char qlog_thread_name[16];
-
-
 void qlog_ext_display_hex_dump(FILE* stream, void* datap, size_t size){
     unsigned int i = 0, j = 0;
     char temp[8] = {0};
@@ -61,63 +55,33 @@ void qlog_ext_display_hex_dump(FILE* stream, void* datap, size_t size){
     }
 }
 
-
-void qlog_ext_display_generic(FILE* stream, void* data, size_t size UNUSED){
-    fprintf(stream, "\tBacktrace:\n%s\n", (char*)data);
-}
-
-
-char* qlog_ext_generate_bt(void){
-    void *array[256];
-    size_t size, i, len;
+void qlog_ext_display_bt(FILE* stream, void* data, size_t size){
+    size_t i;
     char **strings;
-    size_t total_buffer_size = 0;
-    char *result = NULL;
+    size_t num_of_stacks = size / sizeof(void*);
+    void** bt = (void**)data;
 
-    size = backtrace(array, sizeof(array));
-    strings = backtrace_symbols(array, size);
+    strings = backtrace_symbols(bt, num_of_stacks);
 
-    /* Count the total buffer space needed to store the bt string.
-     * sum the length of the strings plus add the extra buffer
-     * space needed for "frame #x: " and the new line and the ending \0*/
-    for (i = 0; i < size; i++){
-        total_buffer_size += strlen(strings[i]);
-    }
-    total_buffer_size += size * 13 + 1;
-
-    result = (char*)malloc(total_buffer_size);
-    memset(result, 0, total_buffer_size);
-
-    for (i = 0; i < size; i++){
-        len = strlen(result);
-        snprintf(result + len, total_buffer_size - len, "\tframe #%-3lu: %s\n", i, strings[i]);
+    for (i = 0; i < num_of_stacks; i++){
+        fprintf(stream, "\tframe#%-3lu: %s\n", i, strings[i]);
     }
 
     free (strings);
-    return result;
 }
 
 int qlog_ext_log(qlog_ext_event_type_t event_type, void* ext_data, size_t data_size, const char* message){
-    int res = QLOG_RET_ERR;
-    char* thread_name = NULL;
-    if (qlog_lib_inited && qlog_default_buf && qlog_enabled && 
-            event_type != QLOG_EXT_EVENT_NONE) {
-        if (qlog_thread_name[0] != '0'){
-            thread_name = qlog_thread_name;
-        }
-        if (event_type == QLOG_EXT_EVENT_BT){
-            char * bt = qlog_ext_generate_bt();
-            qlog_log_internal(qlog_default_buf, thread_name, NULL, 0, message, bt, strlen(bt) + 1,  event_type);
-            free(bt);
-        } else {
-            res = qlog_log_internal(qlog_default_buf, thread_name, NULL, 0, message, ext_data, data_size, event_type);
-        }
-    }
-    return res;
+    return qlog_ext_log_long_id(qlog_internal_get_default_buf_id(),
+            event_type, ext_data, data_size, NULL, NULL, 0, message);
 }
 
-int qlog_ext_log_id(qlog_buffer_id_t buffer_id UNUSED, qlog_ext_event_type_t event_type UNUSED, void* ext_data UNUSED, size_t data_size UNUSED){
-    return QLOG_RET_ERR;
+int qlog_ext_log_id(qlog_buffer_id_t buffer_id,
+        qlog_ext_event_type_t event_type,
+        void* ext_data,
+        size_t data_size,
+        const char* message)
+{
+    return qlog_ext_log_long_id(buffer_id, event_type, ext_data, data_size, NULL, NULL, 0, message);
 }
 
 int qlog_ext_log_long(qlog_ext_event_type_t event_type,
@@ -128,32 +92,39 @@ int qlog_ext_log_long(qlog_ext_event_type_t event_type,
         int line_number,
         const char* message)
 {
-    int res = QLOG_RET_ERR;
-    char* thread_name = NULL;
-    if (qlog_lib_inited && qlog_default_buf && qlog_enabled && event_type != QLOG_EXT_EVENT_NONE) {
-        if (thread == NULL && qlog_thread_name[0] != '0'){
-            thread_name = qlog_thread_name;
-        } 
-        if (event_type == QLOG_EXT_EVENT_BT) {
-            char * bt = qlog_ext_generate_bt();
-            qlog_log_internal(qlog_default_buf, thread_name, function_name, line_number, message, bt, strlen(bt) + 1,  event_type);
-            free(bt);
-        } else {
-            res = qlog_log_internal(qlog_default_buf, thread_name, function_name, line_number, message, ext_data, data_size, event_type);
-        }
-    }
-    return res;
+    return qlog_ext_log_long_id(qlog_internal_get_default_buf_id(),
+            event_type, ext_data, data_size, thread, function_name, line_number, message);
 }
 
-int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id UNUSED,
-        qlog_ext_event_type_t event_id UNUSED,
-        void* ext_data UNUSED,
-        size_t data_size UNUSED,
-        char* thread_name UNUSED,
-        char* function_name UNUSED,
-        int line_number UNUSED)
+int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id,
+        qlog_ext_event_type_t event_type,
+        void* ext_data,
+        size_t data_size,
+        const char* thread_name,
+        const char* function_name,
+        int line_number,
+        const char* message)
 {
-    return QLOG_RET_ERR;
+    const char *thread_name_p = NULL;
+    int res = QLOG_RET_ERR;
+    qlog_buffer_t* buffer = qlog_internal_get_buffer_by_id(buffer_id);
+
+    if (qlog_internal_is_lib_inited()
+            && qlog_internal_is_logging_enabled()
+            && qlog_ext_event_type_is_valid(event_type)
+            && buffer != NULL)
+    {
+        if (thread_name == NULL) {
+            if (qlog_internal_get_thread_name()[0] != '0'){
+                thread_name_p = qlog_internal_get_thread_name();
+            }
+        } else {
+            thread_name_p = thread_name;
+        }
+
+        res = qlog_log_internal(buffer, thread_name_p, function_name, line_number, message, ext_data, data_size, event_type);
+    }
+    return res;
 }
 
 qlog_ext_print_cb_t qlog_ext_get_print_cb(qlog_ext_event_type_t ext_event_type){
@@ -163,7 +134,7 @@ qlog_ext_print_cb_t qlog_ext_get_print_cb(qlog_ext_event_type_t ext_event_type){
             fn = qlog_ext_display_hex_dump;
             break;
         case QLOG_EXT_EVENT_BT:
-            fn = qlog_ext_display_generic;
+            fn = qlog_ext_display_bt;
             break;
         case QLOG_EXT_EVENT_CUSTOM:
             break;
@@ -171,4 +142,8 @@ qlog_ext_print_cb_t qlog_ext_get_print_cb(qlog_ext_event_type_t ext_event_type){
             break;
     }
     return fn;
+}
+
+int qlog_ext_event_type_is_valid(qlog_ext_event_type_t event_type){
+    return (event_type != QLOG_EXT_EVENT_NONE);
 }

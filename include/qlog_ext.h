@@ -16,7 +16,18 @@ typedef enum {
 typedef void (*qlog_ext_print_cb_t)(FILE* stream, void* data, size_t data_size);
 
 qlog_ext_print_cb_t qlog_ext_get_print_cb(qlog_ext_event_type_t ext_event_type);
-int qlog_ext_log(qlog_ext_event_type_t event_type, void* ext_data, size_t data_size, const char* message);
+
+int qlog_ext_log(qlog_ext_event_type_t event_type,
+        void* ext_data,
+        size_t data_size,
+        const char* message);
+
+int qlog_ext_log_id(qlog_buffer_id_t buffer_id,
+        qlog_ext_event_type_t event_type,
+        void* ext_data,
+        size_t data_size,
+        const char* message);
+
 int qlog_ext_log_long(qlog_ext_event_type_t event_id,
                       void* ext_data,
                       size_t data_size,
@@ -25,7 +36,15 @@ int qlog_ext_log_long(qlog_ext_event_type_t event_id,
                       int line_number,
                       const char* message);
 
+int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id,
+        qlog_ext_event_type_t event_type,
+        void* ext_data,
+        size_t data_size,
+        const char* thread_name,
+        const char* function_name,
+        int line_number,
+        const char* message);
 
 
-
+int qlog_ext_event_type_is_valid(qlog_ext_event_type_t event_type);
 #endif

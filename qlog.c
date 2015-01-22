@@ -19,12 +19,16 @@
 #include "qlog_debug.h"
 #include "qlog_display.h"
 
-qlog_buffer_t* qlog_default_buf = 0;
 int qlog_lib_inited = 0;
 int qlog_enabled = 0;
+
 qlog_buffer_t* qlog_buffers[QLOG_MAX_BUF_NUM];
+qlog_buffer_t* qlog_default_buf = 0;
+int qlog_default_buf_id = -1;
+
 pthread_spinlock_t qlog_global_lock;
 static qlog_lock_state_t qlog_global_lock_state = QLOG_LOCK_UNINITED;
+
 __thread char qlog_thread_name[16] = {0};
 
 /******************************************************************************
@@ -70,6 +74,7 @@ int qlog_init(size_t size){
         qlog_buffers[0] = qlog_init_buffer_internal(size);
         if (qlog_buffers[0]) {
             qlog_default_buf = qlog_buffers[0];
+            qlog_default_buf_id = 0;
         }
     }
     qlog_enable_internal();
@@ -169,6 +174,7 @@ void qlog_cleanup(void){
          * default buffer pointer, release and destroy the global lock */
         qlog_lib_inited = 0;
         qlog_default_buf = NULL;
+        qlog_default_buf_id = -1;
         memset(qlog_buffers, 0, sizeof(qlog_buffers));
 
         lock_res = pthread_spin_unlock(&qlog_global_lock);
@@ -218,6 +224,7 @@ qlog_buffer_id_t qlog_create_buffer(size_t size){
             qlog_buffers[buffer_index] = qlog_init_buffer_internal(size);
             if (qlog_default_buf == NULL){
                 qlog_default_buf = qlog_buffers[buffer_index];
+                qlog_default_buf_id = buffer_index;
             }
         }
 
@@ -797,6 +804,33 @@ int qlog_unlock_global(void){
     return QLOG_RET_ERR;
 }
 
+
+
+int qlog_internal_get_max_buf_num(void){
+    return QLOG_MAX_BUF_NUM;
+}
+
+int qlog_internal_is_lib_inited(void){
+    return (qlog_lib_inited > 0);
+}
+
+int qlog_internal_is_logging_enabled(void){
+    return qlog_enabled;
+}
+
+
+char* qlog_internal_get_thread_name(void){
+    return qlog_thread_name;
+}
+
+qlog_buffer_t* qlog_internal_get_default_buf(void){
+    return qlog_default_buf;
+}
+
+qlog_buffer_id_t qlog_internal_get_default_buf_id(void){
+    return qlog_default_buf_id;
+}
+
 /**
  * \brief Provides the buffer pointer by buffer id
  *
@@ -811,9 +845,6 @@ qlog_buffer_t* qlog_internal_get_buffer_by_id(qlog_buffer_id_t buffer_id){
     return NULL;
 }
 
-int qlog_internal_get_max_buf_num(void){
-    return QLOG_MAX_BUF_NUM;
-}
 
 /******************************************************************************
  *

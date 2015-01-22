@@ -205,6 +205,7 @@ void *qlog_server_handler(void* data UNUSED){
     int conn_sock = 0;
     struct sockaddr_in server_addr;
     int res = 0;
+    ssize_t write_res = -1;
 
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (server_sock < 0){
@@ -237,15 +238,21 @@ void *qlog_server_handler(void* data UNUSED){
             return NULL;
         }
 
-        write(conn_sock, welcome_msg, strlen(welcome_msg));
-        qlog_server_handle_connection(conn_sock);
+        write_res = write(conn_sock, welcome_msg, strlen(welcome_msg));
+        if (write_res < 0){
+            fprintf(stderr, "qlog_server: write error\n");
+        } else {
+            qlog_server_handle_connection(conn_sock);
+        }
 
         res = close(conn_sock);
         if (res < 0){
             fprintf(stderr, "qlog_server: Error closing client socket\n");
             return NULL;
         }
-
+        /* allow only to connect once. Needed for memory/valgrind tests.
+         * Remove if not needed */
+        return NULL;
     }
 }
 
