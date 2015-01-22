@@ -18,6 +18,7 @@
 #include "qlog_internal.h"
 #include "qlog_debug.h"
 #include "qlog_display.h"
+#include "qlog_ext.h"
 
 int qlog_lib_inited = 0;
 int qlog_enabled = 0;
@@ -50,6 +51,8 @@ __thread char qlog_thread_name[16] = {0};
  */
 int qlog_init(size_t size){
     int spin_res = 0;
+    int ext_init_res = QLOG_RET_ERR;
+
     if (qlog_lib_inited == 1) {
         return QLOG_RET_ALREADY_INITED;
     }
@@ -77,10 +80,15 @@ int qlog_init(size_t size){
             qlog_default_buf_id = 0;
         }
     }
-    qlog_enable_internal();
-    qlog_lib_inited = 1;
 
-    return QLOG_RET_OK;
+    ext_init_res = qlog_ext_init();
+    if (ext_init_res == QLOG_RET_OK){
+        qlog_enable_internal();
+        qlog_lib_inited = 1;
+        return QLOG_RET_OK;
+    }
+
+    return QLOG_RET_ERR;
 }
 
 /**
@@ -252,7 +260,7 @@ int qlog_log(const char* message){
         if (qlog_thread_name[0] != '0'){
             thread_name = qlog_thread_name;
         }
-        res = qlog_log_internal(qlog_default_buf, thread_name, NULL, 0, message, NULL, 0, QLOG_EXT_EVENT_NONE);
+        res = qlog_log_internal(qlog_default_buf, thread_name, NULL, 0, message, NULL, 0, QLOG_EXT_EVENT_TYPE_NONE);
     }
     return res;
 }
@@ -273,7 +281,7 @@ int qlog_log_id(qlog_buffer_id_t buffer_id, const char* message){
     int res = QLOG_RET_ERR;
     if (qlog_lib_inited && qlog_enabled && message){
         if (buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
-            res = qlog_log_internal(qlog_buffers[buffer_id], NULL, NULL, 0, message, NULL, 0, QLOG_EXT_EVENT_NONE);
+            res = qlog_log_internal(qlog_buffers[buffer_id], NULL, NULL, 0, message, NULL, 0, QLOG_EXT_EVENT_TYPE_NONE);
         }
     }
     return res;
@@ -304,7 +312,7 @@ int qlog_log_long(const char* thread,
         if (thread == NULL && qlog_thread_name[0] != '\0'){
             thread_name = qlog_thread_name;
         }
-        res = qlog_log_internal(qlog_default_buf, thread_name, function, line_num, message, NULL, 0, QLOG_EXT_EVENT_NONE);
+        res = qlog_log_internal(qlog_default_buf, thread_name, function, line_num, message, NULL, 0, QLOG_EXT_EVENT_TYPE_NONE);
     }
     return res;
 }
@@ -336,7 +344,7 @@ int qlog_log_long_id(
     int res = QLOG_RET_ERR;
     if (qlog_lib_inited && qlog_enabled && message){
         if (buffer_id < QLOG_MAX_BUF_NUM && qlog_buffers[buffer_id]){
-            res = qlog_log_internal(qlog_buffers[buffer_id], thread, function, line_num, message, NULL, 0, QLOG_EXT_EVENT_NONE);
+            res = qlog_log_internal(qlog_buffers[buffer_id], thread, function, line_num, message, NULL, 0, QLOG_EXT_EVENT_TYPE_NONE);
         }
     }
     return res;
@@ -479,7 +487,7 @@ void qlog_reset_event_internal(qlog_event_t* event){
             event->ext_data = NULL;
         }
         event->ext_data_size = 0;
-        event->ext_event_type = QLOG_EXT_EVENT_NONE;
+        event->ext_event_type = QLOG_EXT_EVENT_TYPE_NONE;
         event->ext_print_cb = NULL;
     }
 }
@@ -640,11 +648,11 @@ int qlog_log_internal(
         free(event->ext_data);
         event->ext_data = NULL;
         event->ext_data_size = 0;
-        event->ext_event_type = QLOG_EXT_EVENT_NONE;
+        event->ext_event_type = QLOG_EXT_EVENT_TYPE_NONE;
     }
 
     /* if external log data has been provided, store it in the event */
-    if (ext_event_type != QLOG_EXT_EVENT_NONE && ext_data && ext_data_size > 0) {
+    if (ext_event_type != QLOG_EXT_EVENT_TYPE_NONE && ext_data && ext_data_size > 0) {
         event->ext_data = malloc(ext_data_size);
         memcpy(event->ext_data, ext_data, ext_data_size);
         event->ext_event_type = ext_event_type;

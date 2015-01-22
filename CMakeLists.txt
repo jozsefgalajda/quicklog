@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project (hello_cmake)
 #set(CMAKE_C_COMPILER g++)
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}  -Wall -Werror -pedantic")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}  -Wall -Werror -pedantic")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}  -Wall -Werror -pedantic -Wno-variadic-macros")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}  -Wall -Werror -pedantic -Wno-variadic-macros")
 add_executable(qlog_test qlog.c qlog_test.c qlog_server.c qlog_display.c
-        qlog_display_debug.c qlog_ext.c) 
+        qlog_display_debug.c qlog_ext.c qlog_ext_utils.c) 
 find_package (Threads)
 include_directories(include)
 target_link_libraries(qlog_test ${CMAKE_THREAD_LIBS_INIT})

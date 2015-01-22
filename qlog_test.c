@@ -227,10 +227,73 @@ void* test8_thr(void* data){
     return NULL;
 }
 
+
+typedef struct alma{
+    int alma1;
+    int alma2;
+} alma;
+
+typedef struct alma2{
+    int a21;
+    int a22;
+} alma2;
+
+
+void test6_print_cb(FILE* stream, void* data, size_t size){
+    alma* a = (alma*) data;
+    fprintf(stream, "alma1: %d\nalma2: %d\n", a->alma1, a->alma2);
+}
+
+void test6_print_cb2(FILE* stream, void* data, size_t size){
+    alma2* a = (alma2*) data;
+    fprintf(stream, "a21: %d\na22: %d\n", a->a21, a->a22);
+}
+
+
+
 void test6(){
+    int data[100];
+    int i = 0;
+    alma a;
+    alma2 a2;
+    qlog_ext_event_type_t et = 0, et2 = 0;
+    a.alma1 = 100;
+    a.alma2 = 200;
+
+    a2.a21 = 10923;
+    a2.a22 = 987;
+
+    for (i = 0; i < 100; i++) {
+        data[i] = 1879*i;
+    }
     qlog_init(10);
     qlog_thread_init("main thread");
+    QLOG("message1");
     QLOG_BT;
+    QLOG("message2");
+    QLOG_HEX(data, sizeof(data));
+    QLOG("message3");
+
+    et = qlog_ext_register_event(test6_print_cb);
+    printf("event type: %d\n", et);
+    et = qlog_ext_register_event(test6_print_cb);
+    printf("event type: %d\n", et);
+    et = qlog_ext_register_event(test6_print_cb);
+    printf("event type: %d\n", et);
+    et = qlog_ext_register_event(test6_print_cb);
+    printf("event type: %d\n", et);
+    et = qlog_ext_register_event(test6_print_cb);
+    printf("event type: %d\n", et);
+
+    et2 = qlog_ext_register_event(test6_print_cb2);
+    printf("event type: %d\n", et2);
+    qlog_ext_log(et, &a, sizeof(a), "Hoki alma");
+    qlog_ext_log(1000, &a, sizeof(a), "Hoki2 alma");
+    qlog_ext_log(et2, &a2, sizeof(a2), "Hoki2222 alma");
+    QLOG_HEX(&a, sizeof(a));
+
+    QLOG_BT;
+    QLOG_VA("This is a formatted message: %d, %s, %d", 1023, "alma", 12);
     qlog_display_print_buffer(stdout);
     qlog_cleanup();
 }

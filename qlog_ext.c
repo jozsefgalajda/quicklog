@@ -7,68 +7,91 @@
 #include <string.h>
 #include <stdlib.h>
 #include <execinfo.h>
+#include <pthread.h>
 #include "qlog.h"
 #include "qlog_internal.h"
+#include "qlog_ext.h"
 
+struct {
+    qlog_ext_event_info_t events[256];
+    unsigned int index;
+    qlog_ext_event_type_t next_event_type;
+    unsigned char initialized;
+    pthread_spinlock_t lock;
+} qlog_ext_events;
 
-void qlog_ext_display_hex_dump(FILE* stream, void* datap, size_t size){
-    unsigned int i = 0, j = 0;
-    char temp[8] = {0};
-    char buffer[128] = {0};
-    char *ascii;
-    char* data = (char*)datap;
-
-    memset(buffer, 0, sizeof(buffer));
-    fprintf(stream, "\tHexdump of %lu bytes:\n", size);
-    fprintf(stream, "\t        +0          +4          +8          +c            0   4   8   c   \n");
-    fprintf(stream, "\t        ------------------------------------------------  ----------------\n");
-
-    ascii = buffer + 58;
-    memset(buffer, ' ', 58 + 16);
-    buffer[58 + 16] = '\n';
-    buffer[58 + 17] = '\0';
-    buffer[0] = '+';
-    buffer[1] = '0';
-    buffer[2] = '0';
-    buffer[3] = '0';
-    buffer[4] = '0';
-    for (i = 0, j = 0; i < size; i++, j++) {
-        if (j == 16) {
-            fprintf(stream, "\t%s", buffer);
-            memset(buffer, ' ', 58 + 16);
-            sprintf(temp, "+%04x", i);
-            memcpy(buffer, temp, 5);
-            j = 0;
-        }
-
-        sprintf(temp, "%02x", 0xff & data[i]);
-        memcpy(buffer + 8 + (j * 3), temp, 2);
-        if ((data[i] > 31) && (data[i] < 127)){
-            ascii[j] = data[i];
-        } else{
-            ascii[j] = '.';
+int qlog_ext_init(void){
+    int spin_res = 0;
+    int ret = QLOG_RET_ERR;
+    memset(qlog_ext_events.events, 0, sizeof(qlog_ext_events.events));
+    qlog_ext_events.index = 0;
+    qlog_ext_events.initialized = 0;
+    qlog_ext_events.next_event_type = QLOG_EXT_EVENT_TYPE_DYNAMIC_START;
+    spin_res = pthread_spin_init(&qlog_ext_events.lock, PTHREAD_PROCESS_PRIVATE);
+    if (spin_res == 0){
+        ret = qlog_ext_register_built_in_events();
+        if (ret == QLOG_RET_OK) {
+            qlog_ext_events.initialized = 1;
         }
     }
-
-    if (j != 0) {
-        fprintf(stream, "\t%s", buffer);
-    }
+    return ret;
 }
 
-void qlog_ext_display_bt(FILE* stream, void* data, size_t size){
-    size_t i;
-    char **strings;
-    size_t num_of_stacks = size / sizeof(void*);
-    void** bt = (void**)data;
+int qlog_ext_register_built_in_events(void){
+    int spin_res = 0;
+    int ret = QLOG_RET_ERR;
 
-    strings = backtrace_symbols(bt, num_of_stacks);
+    spin_res = pthread_spin_lock(&qlog_ext_events.lock);
+    if (spin_res == 0){
+        qlog_ext_events.events[qlog_ext_events.index].event_type = QLOG_EXT_EVENT_TYPE_BT;
+        qlog_ext_events.events[qlog_ext_events.index].print_callback = qlog_ext_display_bt;
+        qlog_ext_events.index++;
 
-    for (i = 0; i < num_of_stacks; i++){
-        fprintf(stream, "\tframe#%-3lu: %s\n", i, strings[i]);
+        qlog_ext_events.events[qlog_ext_events.index].event_type = QLOG_EXT_EVENT_TYPE_HEXDUMP;
+        qlog_ext_events.events[qlog_ext_events.index].print_callback = qlog_ext_display_hex_dump;
+        qlog_ext_events.index++;
+
+        spin_res = pthread_spin_unlock(&qlog_ext_events.lock);
+        if (spin_res == 0){
+            ret = QLOG_RET_OK;
+        }
     }
-
-    free (strings);
+    return ret;
 }
+
+qlog_ext_event_type_t qlog_ext_register_event(qlog_ext_print_cb_t print_callback){
+    int i = 0;
+    int ret = QLOG_EXT_EVENT_TYPE_NONE;
+    int spin_res = 0;
+    int dup_found = 0;
+
+    if (qlog_ext_events.initialized){
+        spin_res = pthread_spin_lock(&qlog_ext_events.lock);
+        if (spin_res == 0){
+            for (i = 0; i < qlog_ext_events.index; i++){
+                if (qlog_ext_events.events[i].print_callback == print_callback){
+                    dup_found = 1;
+                    break;
+                }
+            }
+            if (dup_found == 1){
+                ret = qlog_ext_events.events[i].event_type;
+            } else {
+                qlog_ext_events.events[qlog_ext_events.index].event_type = qlog_ext_events.next_event_type;
+                qlog_ext_events.events[qlog_ext_events.index].print_callback = print_callback;
+                qlog_ext_events.index++;
+                ret = qlog_ext_events.next_event_type++;
+            }
+
+            spin_res = pthread_spin_unlock(&qlog_ext_events.lock);
+            if (spin_res != 0){
+                qlog_ext_events.initialized = 0;
+            }
+        }
+    }
+    return ret;
+}
+
 
 int qlog_ext_log(qlog_ext_event_type_t event_type, void* ext_data, size_t data_size, const char* message){
     return qlog_ext_log_long_id(qlog_internal_get_default_buf_id(),
@@ -111,6 +134,7 @@ int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id,
 
     if (qlog_internal_is_lib_inited()
             && qlog_internal_is_logging_enabled()
+            && qlog_ext_events.initialized == 1
             && qlog_ext_event_type_is_valid(event_type)
             && buffer != NULL)
     {
@@ -128,22 +152,32 @@ int qlog_ext_log_long_id(qlog_buffer_id_t buffer_id,
 }
 
 qlog_ext_print_cb_t qlog_ext_get_print_cb(qlog_ext_event_type_t ext_event_type){
-    qlog_ext_print_cb_t fn = NULL;
-    switch (ext_event_type){
-        case QLOG_EXT_EVENT_HEXDUMP:
-            fn = qlog_ext_display_hex_dump;
-            break;
-        case QLOG_EXT_EVENT_BT:
-            fn = qlog_ext_display_bt;
-            break;
-        case QLOG_EXT_EVENT_CUSTOM:
-            break;
-        default:
-            break;
+    qlog_ext_print_cb_t ret = NULL;
+    int spin_res = 0;
+    int i = 0;
+
+    spin_res = pthread_spin_lock(&qlog_ext_events.lock);
+    if (spin_res == 0){
+
+        for (i = 0; i < qlog_ext_events.index; i++){
+            if (qlog_ext_events.events[i].event_type == ext_event_type){
+                ret = qlog_ext_events.events[i].print_callback;
+                break;
+            }
+        }
+
+        spin_res = pthread_spin_unlock(&qlog_ext_events.lock);
+        if (spin_res != 0){
+            ret = NULL;
+            qlog_ext_events.initialized = 0;
+        }
+    } else {
+        qlog_ext_events.initialized = 0;
     }
-    return fn;
+    return ret;
 }
 
 int qlog_ext_event_type_is_valid(qlog_ext_event_type_t event_type){
-    return (event_type != QLOG_EXT_EVENT_NONE);
+    return ((event_type > QLOG_EXT_EVENT_TYPE_NONE && event_type <= QLOG_EXT_EVENT_TYPE_LAST) ||
+            (event_type >= QLOG_EXT_EVENT_TYPE_DYNAMIC_START && event_type < qlog_ext_events.next_event_type));
 }

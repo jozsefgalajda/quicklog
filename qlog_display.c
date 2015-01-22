@@ -54,7 +54,7 @@ void qlog_display_event(FILE* stream, const qlog_event_t* event){
     memset(buffer, 0, sizeof(buffer));
     qlog_display_format_event_str(event, buffer, sizeof(buffer));
     fprintf(stream, "%s\n", buffer);
-    if (event->ext_event_type != QLOG_EXT_EVENT_NONE && event->ext_data && 
+    if (event->ext_event_type != QLOG_EXT_EVENT_TYPE_NONE && event->ext_data &&
         event->ext_data_size > 0 && event->ext_print_cb){
         fprintf(stream, "\n");
         event->ext_print_cb(stream, event->ext_data, event->ext_data_size);
