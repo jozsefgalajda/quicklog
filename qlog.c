@@ -31,6 +31,7 @@ pthread_spinlock_t qlog_global_lock;
 static qlog_lock_state_t qlog_global_lock_state = QLOG_LOCK_UNINITED;
 
 __thread char qlog_thread_name[16] = {0};
+__thread uint8_t qlog_thread_indent_level = 0;
 
 /******************************************************************************
  *
@@ -103,6 +104,7 @@ void qlog_thread_init(const char* thread_name){
     if (thread_name){
         snprintf(qlog_thread_name, sizeof(qlog_thread_name) - 1, "%s", thread_name);
     }
+    qlog_thread_indent_level = 0;
 }
 
 /**
@@ -362,6 +364,16 @@ int qlog_get_status(void){
     return qlog_enabled;
 }
 
+void qlog_inc_indent(void){
+    qlog_thread_indent_level++;
+}
+
+void qlog_dec_indent(void){
+    if (qlog_thread_indent_level > 0){
+        qlog_thread_indent_level--;
+    }
+}
+
 
 /******************************************************************************
  *
@@ -479,6 +491,7 @@ void qlog_reset_event_internal(qlog_event_t* event){
         memset(event->thread_name, 0, QLOG_TNAME_BUF_SIZE);
         memset(event->message, 0, QLOG_MSG_BUF_SIZE);
         event->line_number = 0;
+        event->indent_level = 0;
         memset(&event->timestamp, 0, sizeof(struct timeval));
         event->lock = 0;
         event->used = 0;
@@ -660,6 +673,7 @@ int qlog_log_internal(
         event->ext_data_size = ext_data_size;
     }
 
+    event->indent_level = qlog_thread_indent_level;
     event->used = 1;
     __sync_fetch_and_sub(&event->lock, 1);
 

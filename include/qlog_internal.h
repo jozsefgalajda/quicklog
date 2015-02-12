@@ -13,6 +13,8 @@
 #include "qlog_ext.h"
 #define UNUSED __attribute__ ((unused))
 
+#include <stdint.h>
+
 #define QLOG_MAX_EVENT_NUM  128
 #define QLOG_MAX_BUF_NUM    5
 #define QLOG_FNAME_BUF_SIZE 32
@@ -36,6 +38,7 @@ typedef struct qlog_event_t {
     size_t ext_data_size;                    /*!< The size of the extended log data */
     qlog_ext_event_type_t ext_event_type;    /*!< The external event type if any */
     qlog_ext_print_cb_t ext_print_cb;        /*!< Function to print/format external data to stream */
+    uint8_t indent_level;                    /*!< Log message ident level */
 } qlog_event_t;
 
 

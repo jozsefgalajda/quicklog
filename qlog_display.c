@@ -13,7 +13,7 @@
 #include "qlog_internal.h"
 #include "qlog_display.h"
 
-extern int qlog_lib_inited;
+int qlog_display_indention_enabled = 0;
 
 void qlog_display_format_timestamp(char* buffer, size_t size, const struct timeval* t){
     struct tm bdt;
@@ -28,8 +28,17 @@ void qlog_display_format_timestamp(char* buffer, size_t size, const struct timev
     snprintf(buffer + len, size - len - 1, ".%-6ld", t->tv_usec);
 }
 
+void qlog_display_format_indent(char* buffer, size_t size, uint8_t indent_level){
+    memset(buffer, 0, size);
+    buffer[0] = ' ';
+    if (qlog_display_indention_enabled == 1 && indent_level > 0) {
+        snprintf(buffer + 1, size - 1, "%*c", indent_level*2, ' ');
+    }
+}
+
 void qlog_display_format_event_str(const qlog_event_t* event, char* buffer, size_t buffer_size){
     char timestamp_str[30];
+    char indent_str[30];
 
     if (event == NULL || buffer == NULL || buffer_size == 0){
         return;
@@ -37,10 +46,12 @@ void qlog_display_format_event_str(const qlog_event_t* event, char* buffer, size
 
     memset(buffer, 0, buffer_size);
     qlog_display_format_timestamp(timestamp_str, sizeof(timestamp_str), &event->timestamp);
+    qlog_display_format_indent(indent_str, sizeof(indent_str), event->indent_level);
 
     snprintf(buffer, buffer_size - 1,
-            "%s [%s:%s:%u]: %s",
+            "%s%s[%s:%s:%u]: %s",
             timestamp_str,
+            indent_str, 
             event->thread_name[0] != '\0' ? event->thread_name : "-",
             event->function_name[0] != '\0' ? event->function_name : "-",
             event->line_number,
@@ -55,7 +66,7 @@ void qlog_display_event(FILE* stream, const qlog_event_t* event){
     qlog_display_format_event_str(event, buffer, sizeof(buffer));
     fprintf(stream, "%s\n", buffer);
     if (event->ext_event_type != QLOG_EXT_EVENT_TYPE_NONE && event->ext_data &&
-        event->ext_data_size > 0 && event->ext_print_cb){
+            event->ext_data_size > 0 && event->ext_print_cb){
         fprintf(stream, "\n");
         event->ext_print_cb(stream, event->ext_data, event->ext_data_size);
         fprintf(stream, "\n");
@@ -123,10 +134,17 @@ void qlog_display_print_buffer_id(FILE* stream, qlog_buffer_id_t buffer_id){
  */
 void qlog_display_print_buffer_list(FILE* stream){
     int i = 0;
-    if (qlog_lib_inited && stream){
+    if (qlog_internal_is_lib_inited() && stream){
         for (i = 0; i < qlog_internal_get_max_buf_num(); i++){
             fprintf(stream, "Qlog log buffer #%d: %s\n", i, qlog_internal_get_buffer_by_id(i) ? "initialized" : "not initialized");
         }
     }
 }
 
+void qlog_display_enable_indention(void){
+    qlog_display_indention_enabled = 1;
+}
+
+void qlog_display_disable_indention(void){
+    qlog_display_indention_enabled = 0;
+}

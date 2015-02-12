@@ -324,8 +324,49 @@ void test8(int duration, int reset){
     qlog_cleanup();
 }
 
+int test10_b(int param){
+    QLOG_ENTRY;
+    printf("%s: %d\n", __FUNCTION__, param);
+    /*QLOG_BT;*/
+    QLOG_LEAVE;
+    return param * 100;
+}
+
+int test10_a(void){
+    QLOG_ENTRY;
+    QLOG("inside 10_a");
+    /*QLOG_BT;*/
+    QLOG_RET_FN(test10_b(1983), int);
+}
+
+int test10_c(int value){
+    QLOG_ENTRY;
+    /*QLOG_BT;*/
+    QLOG("inside 10_c");
+    QLOG_RET_EXP(value *19);
+}
+
+void test10(void){
+    int a = 0;
+    int b = 0;
+    qlog_init(25);
+    qlog_thread_init("main thread");
+    QLOG("test10 has been started");
+    QLOG_ENTRY;
+    a = test10_a();
+    printf("%s, %d\n", __FUNCTION__, a);
+    QLOG("test10_a has been returned");
+    b = test10_c(86);
+    printf("%s, %d\n", __FUNCTION__, b);
+    QLOG_LEAVE;
+    QLOG("test10 has been finished");
+    qlog_display_print_buffer(stdout);
+    qlog_cleanup();
+
+}
+
 
 int main(){
-    test6();
+    test10();
     return 0;
 }

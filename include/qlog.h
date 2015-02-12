@@ -37,6 +37,8 @@ int qlog_log_long(const char* thread, const char* function, unsigned int line_nu
 int qlog_log_long_id(qlog_buffer_id_t buffer_id, const char* thread, const char* function, unsigned int line_num, const char* message);
 void qlog_toggle_status(void);
 int qlog_get_status(void);
+void qlog_inc_indent(void);
+void qlog_dec_indent(void);
 
 int qlog_start_server(void);
 void qlog_wait_for_server(void);

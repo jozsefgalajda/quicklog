@@ -13,5 +13,8 @@ void qlog_display_print_buffer_id(FILE* stream, qlog_buffer_id_t buffer_id);
 void qlog_display_print_buffer(FILE* stream);
 void qlog_display_print_buffer_list(FILE* stream);
 
+void qlog_display_enable_indention(void);
+void qlog_display_disable_indention(void);
+
 
 #endif

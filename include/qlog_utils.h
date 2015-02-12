@@ -22,12 +22,30 @@
 
 #define QLOG_ENTRY                                              \
     do {                                                        \
+        qlog_inc_indent();                                      \
         qlog_log_long(NULL, __FUNCTION__, __LINE__, "ENTRY");   \
     } while (0);
 
 #define QLOG_LEAVE                                              \
     do {                                                        \
         qlog_log_long(NULL, __FUNCTION__, __LINE__, "LEAVE");   \
+        qlog_dec_indent();                                      \
+    } while (0);
+
+#define QLOG_RET_FN(function, ret_type)                         \
+    do {                                                        \
+        ret_type temp_ret_value;                                \
+        temp_ret_value = function;                              \
+        qlog_log_long(NULL, __FUNCTION__, __LINE__, "LEAVE");   \
+        qlog_dec_indent();                                      \
+        return temp_ret_value;                                  \
+    } while (0);
+
+#define QLOG_RET_EXP(expression)                                \
+    do {                                                        \
+        qlog_log_long(NULL, __FUNCTION__, __LINE__, "LEAVE");   \
+        qlog_dec_indent();                                      \
+        return (expression);                                    \
     } while (0);
 
 #define QLOG_BT                                                 \
@@ -48,6 +66,16 @@
                           data, data_size, NULL,                \
                           __FUNCTION__, __LINE__,               \
                           "External log message");              \
+    } while (0);
+
+#define QLOG_INC_IND                                            \
+    do {                                                        \
+        qlog_inc_indent();                                      \
+    } while (0);
+
+#define QLOG_DEC_IND                                            \
+    do {                                                        \
+        qlog_dec_indent();                                      \
     } while (0);
 
 
