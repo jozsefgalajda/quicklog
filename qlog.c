@@ -589,6 +589,7 @@ int qlog_log_internal(
 {
     qlog_event_t* event = NULL;
     int res = 0;
+    unsigned char lock_state = 0;
 
     /* grab the buffer lock
      * get the next free slot and release the lock as soon as possible 
@@ -626,10 +627,12 @@ int qlog_log_internal(
      * If we happen to get a event which is currently locked,
      * we return with -1 and do not store the event.
      */
-    if (event->lock == 0) {
-        __sync_fetch_and_add(&event->lock, 1);
-    } else {
-        __sync_fetch_and_add(&log_buffer->event_locked, 1);
+    lock_state = __sync_lock_test_and_set(&event->lock, 1);
+    if (lock_state != 0) {
+        /*
+         * This event is still in use from another thread.
+         * We have to leave now, this event is getting dropped.
+         */
         return QLOG_RET_EVNT_LOCKED;
     }
 
@@ -675,7 +678,7 @@ int qlog_log_internal(
 
     event->indent_level = qlog_thread_indent_level;
     event->used = 1;
-    __sync_fetch_and_sub(&event->lock, 1);
+    __sync_and_and_fetch(&event->lock, 0);
 
     return QLOG_RET_OK;
 }

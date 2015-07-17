@@ -367,6 +367,6 @@ void test10(void){
 
 
 int main(){
-    test10();
+    test8(100, 1);
     return 0;
 }
